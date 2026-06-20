@@ -1,4 +1,4 @@
-package main
+package aws
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
 )
 
-func (c *collector) collectCloudTrailTrails(ref plugin.EvidenceRef) (any, error) {
+func (c *Collector) collectCloudTrailTrails(ref plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 

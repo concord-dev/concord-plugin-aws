@@ -1,4 +1,6 @@
-package main
+// Package aws implements the Concord collector for AWS evidence (IAM, S3,
+// CloudTrail) using the AWS SDK v2's standard credentials chain.
+package aws
 
 import (
 	"context"
@@ -16,7 +18,7 @@ import (
 	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
 )
 
-func (c *collector) Capabilities() plugin.Capabilities {
+func (c *Collector) Capabilities() plugin.Capabilities {
 	return plugin.Capabilities{
 		Source:  "aws",
 		Version: "v0.1.0",
@@ -32,13 +34,6 @@ func (c *collector) Capabilities() plugin.Capabilities {
 		},
 		DocsURL: "https://github.com/concord-dev/concord-plugin-aws",
 	}
-}
-
-func stringParamOr(ref plugin.EvidenceRef, key, fallback string) string {
-	if v := plugin.StringParam(ref, key); v != "" {
-		return v
-	}
-	return fallback
 }
 
 type S3API interface {
@@ -59,21 +54,25 @@ type CloudTrailAPI interface {
 	GetTrailStatus(ctx context.Context, in *cloudtrail.GetTrailStatusInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.GetTrailStatusOutput, error)
 }
 
-type collector struct {
+// Collector reads IAM, S3, and CloudTrail evidence using the AWS SDK v2's
+// standard credentials chain.
+type Collector struct {
 	s3         S3API
 	iam        IAMAPI
 	cloudtrail CloudTrailAPI
 }
 
-type Option func(*collector)
+type Option func(*Collector)
 
-func WithS3(api S3API) Option { return func(c *collector) { c.s3 = api } }
+func WithS3(api S3API) Option { return func(c *Collector) { c.s3 = api } }
 
-func WithIAM(api IAMAPI) Option { return func(c *collector) { c.iam = api } }
+func WithIAM(api IAMAPI) Option { return func(c *Collector) { c.iam = api } }
 
-func WithCloudTrail(api CloudTrailAPI) Option { return func(c *collector) { c.cloudtrail = api } }
+func WithCloudTrail(api CloudTrailAPI) Option { return func(c *Collector) { c.cloudtrail = api } }
 
-func newCollector(ctx context.Context, region string) (*collector, error) {
+// New returns an AWS collector wired to the real AWS SDK clients for the given
+// region (defaulting to us-east-1 when empty).
+func New(ctx context.Context, region string) (*Collector, error) {
 	if region == "" {
 		region = "us-east-1"
 	}
@@ -81,22 +80,14 @@ func newCollector(ctx context.Context, region string) (*collector, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading AWS config: %w", err)
 	}
-	return &collector{
+	return &Collector{
 		s3:         s3.NewFromConfig(cfg),
 		iam:        iam.NewFromConfig(cfg),
 		cloudtrail: cloudtrail.NewFromConfig(cfg),
 	}, nil
 }
 
-func newWith(opts ...Option) *collector {
-	c := &collector{}
-	for _, opt := range opts {
-		opt(c)
-	}
-	return c
-}
-
-func (c *collector) Probe(ctx context.Context) (string, error) {
+func (c *Collector) Probe(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	out, err := c.iam.GetAccountSummary(ctx, &iam.GetAccountSummaryInput{})
@@ -107,7 +98,7 @@ func (c *collector) Probe(ctx context.Context) (string, error) {
 	return fmt.Sprintf("iam reachable (%d users)", users), nil
 }
 
-func (c *collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, error) {
+func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, error) {
 	switch ref.Type {
 	case "s3_bucket_encryption":
 		return c.collectS3BucketEncryption(ref)

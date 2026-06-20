@@ -1,4 +1,4 @@
-package main
+package aws
 
 import (
 	"context"
@@ -20,7 +20,7 @@ var credentialReportPollDelay = 2 * time.Second
 
 func SetCredentialReportPollDelay(d time.Duration) { credentialReportPollDelay = d }
 
-func (c *collector) collectIAMAccountSummary(ref plugin.EvidenceRef) (any, error) {
+func (c *Collector) collectIAMAccountSummary(ref plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	out, err := c.iam.GetAccountSummary(ctx, &iam.GetAccountSummaryInput{})
@@ -37,7 +37,7 @@ func (c *collector) collectIAMAccountSummary(ref plugin.EvidenceRef) (any, error
 	}, nil
 }
 
-func (c *collector) collectIAMPasswordPolicy(ref plugin.EvidenceRef) (any, error) {
+func (c *Collector) collectIAMPasswordPolicy(ref plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	out, err := c.iam.GetAccountPasswordPolicy(ctx, &iam.GetAccountPasswordPolicyInput{})
@@ -77,7 +77,7 @@ func isNoPasswordPolicyError(err error) bool {
 	return false
 }
 
-func (c *collector) collectIAMCredentialReport(ref plugin.EvidenceRef) (any, error) {
+func (c *Collector) collectIAMCredentialReport(ref plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
@@ -103,7 +103,7 @@ func (c *collector) collectIAMCredentialReport(ref plugin.EvidenceRef) (any, err
 	}, nil
 }
 
-func (c *collector) pollCredentialReport(ctx context.Context) (*iam.GetCredentialReportOutput, error) {
+func (c *Collector) pollCredentialReport(ctx context.Context) (*iam.GetCredentialReportOutput, error) {
 	for i := 0; i < credentialReportPollAttempts; i++ {
 		out, err := c.iam.GetCredentialReport(ctx, &iam.GetCredentialReportInput{})
 		if err == nil {
