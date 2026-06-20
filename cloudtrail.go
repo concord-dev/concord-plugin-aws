@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 
-	plugin "github.com/concord-dev/concord/pkg/plugin"
+	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
 )
 
 func (c *collector) collectCloudTrailTrails(ref plugin.EvidenceRef) (any, error) {

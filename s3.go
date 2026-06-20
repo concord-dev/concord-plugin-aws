@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
-	plugin "github.com/concord-dev/concord/pkg/plugin"
+	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
 )
 
 func (c *collector) collectS3BucketEncryption(ref plugin.EvidenceRef) (any, error) {
