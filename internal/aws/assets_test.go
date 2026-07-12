@@ -37,6 +37,10 @@ func (fakeS3) GetBucketTagging(_ context.Context, _ *s3.GetBucketTaggingInput, _
 	return &s3.GetBucketTaggingOutput{}, nil
 }
 
+func (fakeS3) GetBucketPolicy(_ context.Context, _ *s3.GetBucketPolicyInput, _ ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error) {
+	return &s3.GetBucketPolicyOutput{}, nil
+}
+
 func TestCollectAssets_S3Buckets(t *testing.T) {
 	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	c := &aws.Collector{}

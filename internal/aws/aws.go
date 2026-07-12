@@ -28,7 +28,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"s3_bucket_encryption", "s3_public_access_block",
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
 			"cloudtrail_trails", "storage_encryption", "security_groups", "iam_roles",
-			"iam_policies",
+			"iam_policies", "s3_bucket_policy", "vpc_flow_logs",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -44,6 +44,7 @@ type S3API interface {
 	GetBucketEncryption(ctx context.Context, in *s3.GetBucketEncryptionInput, opts ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
 	GetPublicAccessBlock(ctx context.Context, in *s3.GetPublicAccessBlockInput, opts ...func(*s3.Options)) (*s3.GetPublicAccessBlockOutput, error)
 	GetBucketTagging(ctx context.Context, in *s3.GetBucketTaggingInput, opts ...func(*s3.Options)) (*s3.GetBucketTaggingOutput, error)
+	GetBucketPolicy(ctx context.Context, in *s3.GetBucketPolicyInput, opts ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error)
 }
 
 // RDSAPI is the subset of the RDS client the storage_encryption collector uses.
@@ -56,6 +57,8 @@ type RDSAPI interface {
 type EC2API interface {
 	DescribeVolumes(ctx context.Context, in *ec2.DescribeVolumesInput, opts ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error)
 	DescribeSecurityGroups(ctx context.Context, in *ec2.DescribeSecurityGroupsInput, opts ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
+	DescribeVpcs(ctx context.Context, in *ec2.DescribeVpcsInput, opts ...func(*ec2.Options)) (*ec2.DescribeVpcsOutput, error)
+	DescribeFlowLogs(ctx context.Context, in *ec2.DescribeFlowLogsInput, opts ...func(*ec2.Options)) (*ec2.DescribeFlowLogsOutput, error)
 }
 
 type IAMAPI interface {
@@ -87,6 +90,7 @@ type Collector struct {
 	cloudtrail CloudTrailAPI
 	rds        RDSAPI
 	ec2        EC2API
+	region     string
 }
 
 type Option func(*Collector)
@@ -117,6 +121,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		cloudtrail: cloudtrail.NewFromConfig(cfg),
 		rds:        rds.NewFromConfig(cfg),
 		ec2:        ec2.NewFromConfig(cfg),
+		region:     region,
 	}, nil
 }
 
@@ -153,6 +158,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectIAMRoles(ref)
 	case "iam_policies":
 		return c.collectIAMPolicies(ref)
+	case "s3_bucket_policy":
+		return c.collectS3BucketPolicy(ref)
+	case "vpc_flow_logs":
+		return c.collectVPCFlowLogs(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

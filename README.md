@@ -17,6 +17,8 @@ the AWS SDK v2's standard credentials chain.
 | `security_groups` | EC2 security groups with inbound/outbound rules per CIDR + scope tag |
 | `iam_roles` | IAM roles with session ceiling, tags, and decoded trust policy |
 | `iam_policies` | IAM identities with attached managed policies + decoded documents |
+| `s3_bucket_policy` | per-bucket resource policy (decoded) + tags |
+| `vpc_flow_logs` | per-VPC active flow-log status |
 
 ## Required IAM permissions
 
