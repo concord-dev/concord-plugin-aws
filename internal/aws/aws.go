@@ -1,5 +1,5 @@
 // Package aws implements the Concord collector for AWS evidence (IAM, S3,
-// CloudTrail) using the AWS SDK v2's standard credentials chain.
+// CloudTrail, RDS, EBS) using the AWS SDK v2's standard credentials chain.
 package aws
 
 import (
@@ -11,7 +11,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
@@ -21,11 +23,11 @@ import (
 func (c *Collector) Capabilities() plugin.Capabilities {
 	return plugin.Capabilities{
 		Source:  "aws",
-		Version: "v0.1.0",
+		Version: "v0.2.0",
 		SupportedTypes: []string{
 			"s3_bucket_encryption", "s3_public_access_block",
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
-			"cloudtrail_trails",
+			"cloudtrail_trails", "storage_encryption",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -40,6 +42,17 @@ type S3API interface {
 	ListBuckets(ctx context.Context, in *s3.ListBucketsInput, opts ...func(*s3.Options)) (*s3.ListBucketsOutput, error)
 	GetBucketEncryption(ctx context.Context, in *s3.GetBucketEncryptionInput, opts ...func(*s3.Options)) (*s3.GetBucketEncryptionOutput, error)
 	GetPublicAccessBlock(ctx context.Context, in *s3.GetPublicAccessBlockInput, opts ...func(*s3.Options)) (*s3.GetPublicAccessBlockOutput, error)
+	GetBucketTagging(ctx context.Context, in *s3.GetBucketTaggingInput, opts ...func(*s3.Options)) (*s3.GetBucketTaggingOutput, error)
+}
+
+// RDSAPI is the subset of the RDS client the storage_encryption collector uses.
+type RDSAPI interface {
+	DescribeDBInstances(ctx context.Context, in *rds.DescribeDBInstancesInput, opts ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error)
+}
+
+// EC2API is the subset of the EC2 client the storage_encryption collector uses.
+type EC2API interface {
+	DescribeVolumes(ctx context.Context, in *ec2.DescribeVolumesInput, opts ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error)
 }
 
 type IAMAPI interface {
@@ -54,12 +67,14 @@ type CloudTrailAPI interface {
 	GetTrailStatus(ctx context.Context, in *cloudtrail.GetTrailStatusInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.GetTrailStatusOutput, error)
 }
 
-// Collector reads IAM, S3, and CloudTrail evidence using the AWS SDK v2's
-// standard credentials chain.
+// Collector reads IAM, S3, CloudTrail, RDS, and EBS evidence using the AWS
+// SDK v2's standard credentials chain.
 type Collector struct {
 	s3         S3API
 	iam        IAMAPI
 	cloudtrail CloudTrailAPI
+	rds        RDSAPI
+	ec2        EC2API
 }
 
 type Option func(*Collector)
@@ -69,6 +84,10 @@ func WithS3(api S3API) Option { return func(c *Collector) { c.s3 = api } }
 func WithIAM(api IAMAPI) Option { return func(c *Collector) { c.iam = api } }
 
 func WithCloudTrail(api CloudTrailAPI) Option { return func(c *Collector) { c.cloudtrail = api } }
+
+func WithRDS(api RDSAPI) Option { return func(c *Collector) { c.rds = api } }
+
+func WithEC2(api EC2API) Option { return func(c *Collector) { c.ec2 = api } }
 
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
@@ -84,6 +103,8 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		s3:         s3.NewFromConfig(cfg),
 		iam:        iam.NewFromConfig(cfg),
 		cloudtrail: cloudtrail.NewFromConfig(cfg),
+		rds:        rds.NewFromConfig(cfg),
+		ec2:        ec2.NewFromConfig(cfg),
 	}, nil
 }
 
@@ -112,6 +133,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectIAMCredentialReport(ref)
 	case "cloudtrail_trails":
 		return c.collectCloudTrailTrails(ref)
+	case "storage_encryption":
+		return c.collectStorageEncryption(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

@@ -13,6 +13,7 @@ the AWS SDK v2's standard credentials chain.
 | `iam_password_policy` | output of `aws iam get-account-password-policy` |
 | `iam_credential_report` | parsed `iam:GenerateCredentialReport` CSV |
 | `cloudtrail_trails` | every trail, region, log file integrity flag |
+| `storage_encryption` | encryption-at-rest for S3 buckets, RDS instances, and EBS volumes, with each resource's tags |
 
 ## Required IAM permissions
 

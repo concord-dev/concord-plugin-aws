@@ -6,7 +6,9 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.40
 	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.43.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.180.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.35.0
+	github.com/aws/aws-sdk-go-v2/service/rds v1.86.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.0
 	github.com/aws/smithy-go v1.22.0
 	github.com/concord-dev/concord-plugin-sdk v0.1.0
@@ -34,6 +36,7 @@ require (
 	github.com/hashicorp/go-hclog v0.14.1 // indirect
 	github.com/hashicorp/go-plugin v1.6.2 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oklog/run v1.0.0 // indirect
