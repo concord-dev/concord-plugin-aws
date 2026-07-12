@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
@@ -29,6 +30,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
 			"cloudtrail_trails", "storage_encryption", "security_groups", "iam_roles",
 			"iam_policies", "s3_bucket_policy", "vpc_flow_logs",
+			"config_recorder_status",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -82,6 +84,13 @@ type CloudTrailAPI interface {
 	GetTrailStatus(ctx context.Context, in *cloudtrail.GetTrailStatusInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.GetTrailStatusOutput, error)
 }
 
+// ConfigAPI is the subset of the AWS Config client the config_recorder_status
+// collector uses.
+type ConfigAPI interface {
+	DescribeConfigurationRecorders(ctx context.Context, in *configservice.DescribeConfigurationRecordersInput, opts ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecordersOutput, error)
+	DescribeConfigurationRecorderStatus(ctx context.Context, in *configservice.DescribeConfigurationRecorderStatusInput, opts ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecorderStatusOutput, error)
+}
+
 // Collector reads IAM, S3, CloudTrail, RDS, and EBS evidence using the AWS
 // SDK v2's standard credentials chain.
 type Collector struct {
@@ -90,6 +99,7 @@ type Collector struct {
 	cloudtrail CloudTrailAPI
 	rds        RDSAPI
 	ec2        EC2API
+	config     ConfigAPI
 	region     string
 }
 
@@ -104,6 +114,8 @@ func WithCloudTrail(api CloudTrailAPI) Option { return func(c *Collector) { c.cl
 func WithRDS(api RDSAPI) Option { return func(c *Collector) { c.rds = api } }
 
 func WithEC2(api EC2API) Option { return func(c *Collector) { c.ec2 = api } }
+
+func WithConfig(api ConfigAPI) Option { return func(c *Collector) { c.config = api } }
 
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
@@ -121,6 +133,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		cloudtrail: cloudtrail.NewFromConfig(cfg),
 		rds:        rds.NewFromConfig(cfg),
 		ec2:        ec2.NewFromConfig(cfg),
+		config:     configservice.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -162,6 +175,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectS3BucketPolicy(ref)
 	case "vpc_flow_logs":
 		return c.collectVPCFlowLogs(ref)
+	case "config_recorder_status":
+		return c.collectConfigRecorderStatus(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

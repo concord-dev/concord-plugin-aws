@@ -19,6 +19,7 @@ the AWS SDK v2's standard credentials chain.
 | `iam_policies` | IAM identities with attached managed policies + decoded documents |
 | `s3_bucket_policy` | per-bucket resource policy (decoded) + tags |
 | `vpc_flow_logs` | per-VPC active flow-log status |
+| `config_recorder_status` | AWS Config recorder coverage (recording + all-supported) |
 
 ## Required IAM permissions
 
