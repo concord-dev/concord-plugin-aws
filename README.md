@@ -16,6 +16,7 @@ the AWS SDK v2's standard credentials chain.
 | `storage_encryption` | encryption-at-rest for S3 buckets, RDS instances, and EBS volumes, with each resource's tags |
 | `security_groups` | EC2 security groups with inbound/outbound rules per CIDR + scope tag |
 | `iam_roles` | IAM roles with session ceiling, tags, and decoded trust policy |
+| `iam_policies` | IAM identities with attached managed policies + decoded documents |
 
 ## Required IAM permissions
 

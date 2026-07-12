@@ -15,10 +15,18 @@ import (
 	"github.com/concord-dev/concord-plugin-aws/internal/aws"
 )
 
-// fakeIAM implements the full IAMAPI; only the role calls are exercised here.
+// fakeIAM implements the full IAMAPI. Role fields drive the iam_roles test;
+// user/attached/policy fields drive the iam_policies test.
 type fakeIAM struct {
-	roles []iamtypes.Role
-	tags  map[string][]iamtypes.Tag
+	roles          []iamtypes.Role
+	tags           map[string][]iamtypes.Tag
+	users          []iamtypes.User
+	groups         []iamtypes.Group
+	attachedUser   map[string][]iamtypes.AttachedPolicy
+	attachedRole   map[string][]iamtypes.AttachedPolicy
+	attachedGroup  map[string][]iamtypes.AttachedPolicy
+	policyVersions map[string]string // arn -> default version id
+	policyDocs     map[string]string // arn -> URL-encoded document
 }
 
 func (fakeIAM) GetAccountSummary(context.Context, *iam.GetAccountSummaryInput, ...func(*iam.Options)) (*iam.GetAccountSummaryOutput, error) {
@@ -43,6 +51,42 @@ func (f fakeIAM) ListRoles(context.Context, *iam.ListRolesInput, ...func(*iam.Op
 
 func (f fakeIAM) ListRoleTags(_ context.Context, in *iam.ListRoleTagsInput, _ ...func(*iam.Options)) (*iam.ListRoleTagsOutput, error) {
 	return &iam.ListRoleTagsOutput{Tags: f.tags[awssdk.ToString(in.RoleName)]}, nil
+}
+
+func (f fakeIAM) ListUsers(context.Context, *iam.ListUsersInput, ...func(*iam.Options)) (*iam.ListUsersOutput, error) {
+	return &iam.ListUsersOutput{Users: f.users}, nil
+}
+
+func (f fakeIAM) ListGroups(context.Context, *iam.ListGroupsInput, ...func(*iam.Options)) (*iam.ListGroupsOutput, error) {
+	return &iam.ListGroupsOutput{Groups: f.groups}, nil
+}
+
+func (f fakeIAM) ListAttachedUserPolicies(_ context.Context, in *iam.ListAttachedUserPoliciesInput, _ ...func(*iam.Options)) (*iam.ListAttachedUserPoliciesOutput, error) {
+	return &iam.ListAttachedUserPoliciesOutput{AttachedPolicies: f.attachedUser[awssdk.ToString(in.UserName)]}, nil
+}
+
+func (f fakeIAM) ListAttachedRolePolicies(_ context.Context, in *iam.ListAttachedRolePoliciesInput, _ ...func(*iam.Options)) (*iam.ListAttachedRolePoliciesOutput, error) {
+	return &iam.ListAttachedRolePoliciesOutput{AttachedPolicies: f.attachedRole[awssdk.ToString(in.RoleName)]}, nil
+}
+
+func (f fakeIAM) ListAttachedGroupPolicies(_ context.Context, in *iam.ListAttachedGroupPoliciesInput, _ ...func(*iam.Options)) (*iam.ListAttachedGroupPoliciesOutput, error) {
+	return &iam.ListAttachedGroupPoliciesOutput{AttachedPolicies: f.attachedGroup[awssdk.ToString(in.GroupName)]}, nil
+}
+
+func (f fakeIAM) GetPolicy(_ context.Context, in *iam.GetPolicyInput, _ ...func(*iam.Options)) (*iam.GetPolicyOutput, error) {
+	arn := awssdk.ToString(in.PolicyArn)
+	return &iam.GetPolicyOutput{Policy: &iamtypes.Policy{
+		Arn:              in.PolicyArn,
+		DefaultVersionId: awssdk.String(f.policyVersions[arn]),
+	}}, nil
+}
+
+func (f fakeIAM) GetPolicyVersion(_ context.Context, in *iam.GetPolicyVersionInput, _ ...func(*iam.Options)) (*iam.GetPolicyVersionOutput, error) {
+	arn := awssdk.ToString(in.PolicyArn)
+	return &iam.GetPolicyVersionOutput{PolicyVersion: &iamtypes.PolicyVersion{
+		Document:  awssdk.String(f.policyDocs[arn]),
+		VersionId: in.VersionId,
+	}}, nil
 }
 
 func TestCollectIAMRoles(t *testing.T) {
