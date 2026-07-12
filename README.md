@@ -15,6 +15,7 @@ the AWS SDK v2's standard credentials chain.
 | `cloudtrail_trails` | every trail, region, log file integrity flag |
 | `storage_encryption` | encryption-at-rest for S3 buckets, RDS instances, and EBS volumes, with each resource's tags |
 | `security_groups` | EC2 security groups with inbound/outbound rules per CIDR + scope tag |
+| `iam_roles` | IAM roles with session ceiling, tags, and decoded trust policy |
 
 ## Required IAM permissions
 

@@ -27,7 +27,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 		SupportedTypes: []string{
 			"s3_bucket_encryption", "s3_public_access_block",
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
-			"cloudtrail_trails", "storage_encryption", "security_groups",
+			"cloudtrail_trails", "storage_encryption", "security_groups", "iam_roles",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -62,6 +62,8 @@ type IAMAPI interface {
 	GetAccountPasswordPolicy(ctx context.Context, in *iam.GetAccountPasswordPolicyInput, opts ...func(*iam.Options)) (*iam.GetAccountPasswordPolicyOutput, error)
 	GenerateCredentialReport(ctx context.Context, in *iam.GenerateCredentialReportInput, opts ...func(*iam.Options)) (*iam.GenerateCredentialReportOutput, error)
 	GetCredentialReport(ctx context.Context, in *iam.GetCredentialReportInput, opts ...func(*iam.Options)) (*iam.GetCredentialReportOutput, error)
+	ListRoles(ctx context.Context, in *iam.ListRolesInput, opts ...func(*iam.Options)) (*iam.ListRolesOutput, error)
+	ListRoleTags(ctx context.Context, in *iam.ListRoleTagsInput, opts ...func(*iam.Options)) (*iam.ListRoleTagsOutput, error)
 }
 
 type CloudTrailAPI interface {
@@ -139,6 +141,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectStorageEncryption(ref)
 	case "security_groups":
 		return c.collectSecurityGroups(ref)
+	case "iam_roles":
+		return c.collectIAMRoles(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
