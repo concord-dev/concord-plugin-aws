@@ -27,7 +27,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 		SupportedTypes: []string{
 			"s3_bucket_encryption", "s3_public_access_block",
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
-			"cloudtrail_trails", "storage_encryption",
+			"cloudtrail_trails", "storage_encryption", "security_groups",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -50,9 +50,11 @@ type RDSAPI interface {
 	DescribeDBInstances(ctx context.Context, in *rds.DescribeDBInstancesInput, opts ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error)
 }
 
-// EC2API is the subset of the EC2 client the storage_encryption collector uses.
+// EC2API is the subset of the EC2 client the storage_encryption and
+// security_groups collectors use.
 type EC2API interface {
 	DescribeVolumes(ctx context.Context, in *ec2.DescribeVolumesInput, opts ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error)
+	DescribeSecurityGroups(ctx context.Context, in *ec2.DescribeSecurityGroupsInput, opts ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
 }
 
 type IAMAPI interface {
@@ -135,6 +137,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectCloudTrailTrails(ref)
 	case "storage_encryption":
 		return c.collectStorageEncryption(ref)
+	case "security_groups":
+		return c.collectSecurityGroups(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

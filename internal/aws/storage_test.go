@@ -38,10 +38,17 @@ func (f fakeRDS) DescribeDBInstances(_ context.Context, _ *rds.DescribeDBInstanc
 	return &rds.DescribeDBInstancesOutput{DBInstances: f.instances}, nil
 }
 
-type fakeEC2 struct{ volumes []ec2types.Volume }
+type fakeEC2 struct {
+	volumes []ec2types.Volume
+	sgs     []ec2types.SecurityGroup
+}
 
 func (f fakeEC2) DescribeVolumes(_ context.Context, _ *ec2.DescribeVolumesInput, _ ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error) {
 	return &ec2.DescribeVolumesOutput{Volumes: f.volumes}, nil
+}
+
+func (f fakeEC2) DescribeSecurityGroups(_ context.Context, _ *ec2.DescribeSecurityGroupsInput, _ ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error) {
+	return &ec2.DescribeSecurityGroupsOutput{SecurityGroups: f.sgs}, nil
 }
 
 func TestCollectStorageEncryption(t *testing.T) {
