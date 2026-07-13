@@ -26,6 +26,19 @@ func (c *Collector) collectS3BucketPolicy(_ plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
+	buckets, err := c.s3BucketPolicies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"fetched_at": time.Now().UTC().Format(time.RFC3339),
+		"buckets":    buckets,
+	}, nil
+}
+
+// s3BucketPolicies returns each bucket's decoded resource policy and tags.
+// Shared by the s3_bucket_policy and aws_tls_endpoints collectors.
+func (c *Collector) s3BucketPolicies(ctx context.Context) ([]map[string]any, error) {
 	listOut, err := c.s3.ListBuckets(ctx, &s3.ListBucketsInput{})
 	if err != nil {
 		return nil, wrapErr("listing buckets", err)
@@ -60,10 +73,7 @@ func (c *Collector) collectS3BucketPolicy(_ plugin.EvidenceRef) (any, error) {
 		}
 		buckets = append(buckets, bucket)
 	}
-	return map[string]any{
-		"fetched_at": time.Now().UTC().Format(time.RFC3339),
-		"buckets":    buckets,
-	}, nil
+	return buckets, nil
 }
 
 // decodeJSONObject parses a raw JSON object string (e.g. an S3 bucket policy,

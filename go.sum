@@ -24,6 +24,8 @@ github.com/aws/aws-sdk-go-v2/service/configservice v1.67.0 h1:2JoUSqw/3rCR7kLUjY
 github.com/aws/aws-sdk-go-v2/service/configservice v1.67.0/go.mod h1:uLtMQIAG1/lzhORRBDFT44lFL2QuGh9rWO3oMru+OW0=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.316.0 h1:LlxNun/oe5B2XMff8Mkh/3bJeHl1K7Fod+rMYtjagw4=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.316.0/go.mod h1:eoF0SIRbTgKWnTcTPYckiURPba/7ilfEkvwL4V1iHK4=
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.56.0 h1:OJRqQ6G7RjmwJ9fkhFgcJBSinjrLJxfd5AacBUrhKXc=
+github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.56.0/go.mod h1:qNnJkZTDHDL2sO8hyVH2yILcfSEkjP/pIns2JsF1g1o=
 github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0 h1:pNOY79bDKVhDJbo+FZNeRTDvgfNPpTUE1179JBoZVLs=
 github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0/go.mod h1:5ALcyuLJ7PWhKGfymTQuzcnElk/7CDiTjIv/Hp6YyGc=
 github.com/aws/aws-sdk-go-v2/service/iam v1.55.0 h1:yHGUjdpLS+QrE/2UypKn2yNGuAJJQELYzjQ/5qL1Eu4=
