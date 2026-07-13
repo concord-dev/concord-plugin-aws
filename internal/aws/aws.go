@@ -37,6 +37,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"kms_keys", "network_acls", "s3_bucket_integrity",
 			"ec2_inventory", "cloudtrail_event_selectors",
 			"iam_identity_inventory", "iam_privileged_principals",
+			"config_conformance_status", "s3_lifecycle",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -55,6 +56,7 @@ type S3API interface {
 	GetBucketPolicy(ctx context.Context, in *s3.GetBucketPolicyInput, opts ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error)
 	GetBucketVersioning(ctx context.Context, in *s3.GetBucketVersioningInput, opts ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
 	GetObjectLockConfiguration(ctx context.Context, in *s3.GetObjectLockConfigurationInput, opts ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
+	GetBucketLifecycleConfiguration(ctx context.Context, in *s3.GetBucketLifecycleConfigurationInput, opts ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error)
 }
 
 // RDSAPI is the subset of the RDS client the storage_encryption collector uses.
@@ -100,6 +102,8 @@ type CloudTrailAPI interface {
 type ConfigAPI interface {
 	DescribeConfigurationRecorders(ctx context.Context, in *configservice.DescribeConfigurationRecordersInput, opts ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecordersOutput, error)
 	DescribeConfigurationRecorderStatus(ctx context.Context, in *configservice.DescribeConfigurationRecorderStatusInput, opts ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecorderStatusOutput, error)
+	DescribeConformancePacks(ctx context.Context, in *configservice.DescribeConformancePacksInput, opts ...func(*configservice.Options)) (*configservice.DescribeConformancePacksOutput, error)
+	GetConformancePackComplianceSummary(ctx context.Context, in *configservice.GetConformancePackComplianceSummaryInput, opts ...func(*configservice.Options)) (*configservice.GetConformancePackComplianceSummaryOutput, error)
 }
 
 // GuardDutyAPI is the subset of the GuardDuty client the guardduty_status
@@ -238,6 +242,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectIAMIdentityInventory(ref)
 	case "iam_privileged_principals":
 		return c.collectIAMPrivilegedPrincipals(ref)
+	case "config_conformance_status":
+		return c.collectConfigConformanceStatus(ref)
+	case "s3_lifecycle":
+		return c.collectS3Lifecycle(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

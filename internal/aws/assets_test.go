@@ -49,6 +49,10 @@ func (fakeS3) GetObjectLockConfiguration(_ context.Context, _ *s3.GetObjectLockC
 	return &s3.GetObjectLockConfigurationOutput{}, nil
 }
 
+func (fakeS3) GetBucketLifecycleConfiguration(_ context.Context, _ *s3.GetBucketLifecycleConfigurationInput, _ ...func(*s3.Options)) (*s3.GetBucketLifecycleConfigurationOutput, error) {
+	return &s3.GetBucketLifecycleConfigurationOutput{}, nil
+}
+
 func TestCollectAssets_S3Buckets(t *testing.T) {
 	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	c := &aws.Collector{}

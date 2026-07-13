@@ -16,8 +16,10 @@ import (
 )
 
 type fakeConfig struct {
-	recorders []cfgtypes.ConfigurationRecorder
-	status    []cfgtypes.ConfigurationRecorderStatus
+	recorders  []cfgtypes.ConfigurationRecorder
+	status     []cfgtypes.ConfigurationRecorderStatus
+	packs      []cfgtypes.ConformancePackDetail
+	compliance []cfgtypes.ConformancePackComplianceSummary
 }
 
 func (f fakeConfig) DescribeConfigurationRecorders(context.Context, *configservice.DescribeConfigurationRecordersInput, ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecordersOutput, error) {
@@ -26,6 +28,14 @@ func (f fakeConfig) DescribeConfigurationRecorders(context.Context, *configservi
 
 func (f fakeConfig) DescribeConfigurationRecorderStatus(context.Context, *configservice.DescribeConfigurationRecorderStatusInput, ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecorderStatusOutput, error) {
 	return &configservice.DescribeConfigurationRecorderStatusOutput{ConfigurationRecordersStatus: f.status}, nil
+}
+
+func (f fakeConfig) DescribeConformancePacks(context.Context, *configservice.DescribeConformancePacksInput, ...func(*configservice.Options)) (*configservice.DescribeConformancePacksOutput, error) {
+	return &configservice.DescribeConformancePacksOutput{ConformancePackDetails: f.packs}, nil
+}
+
+func (f fakeConfig) GetConformancePackComplianceSummary(context.Context, *configservice.GetConformancePackComplianceSummaryInput, ...func(*configservice.Options)) (*configservice.GetConformancePackComplianceSummaryOutput, error) {
+	return &configservice.GetConformancePackComplianceSummaryOutput{ConformancePackComplianceSummaryList: f.compliance}, nil
 }
 
 func TestCollectConfigRecorderStatus(t *testing.T) {
