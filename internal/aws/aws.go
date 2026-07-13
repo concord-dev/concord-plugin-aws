@@ -13,9 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/guardduty"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/smithy-go"
 
 	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
@@ -30,7 +32,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"iam_account_summary", "iam_password_policy", "iam_credential_report",
 			"cloudtrail_trails", "storage_encryption", "security_groups", "iam_roles",
 			"iam_policies", "s3_bucket_policy", "vpc_flow_logs",
-			"config_recorder_status",
+			"config_recorder_status", "guardduty_status", "ssm_patch_compliance",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -91,6 +93,18 @@ type ConfigAPI interface {
 	DescribeConfigurationRecorderStatus(ctx context.Context, in *configservice.DescribeConfigurationRecorderStatusInput, opts ...func(*configservice.Options)) (*configservice.DescribeConfigurationRecorderStatusOutput, error)
 }
 
+// GuardDutyAPI is the subset of the GuardDuty client the guardduty_status
+// collector uses.
+type GuardDutyAPI interface {
+	ListDetectors(ctx context.Context, in *guardduty.ListDetectorsInput, opts ...func(*guardduty.Options)) (*guardduty.ListDetectorsOutput, error)
+	GetDetector(ctx context.Context, in *guardduty.GetDetectorInput, opts ...func(*guardduty.Options)) (*guardduty.GetDetectorOutput, error)
+}
+
+// SSMAPI is the subset of the SSM client the ssm_patch_compliance collector uses.
+type SSMAPI interface {
+	DescribeInstancePatchStates(ctx context.Context, in *ssm.DescribeInstancePatchStatesInput, opts ...func(*ssm.Options)) (*ssm.DescribeInstancePatchStatesOutput, error)
+}
+
 // Collector reads IAM, S3, CloudTrail, RDS, and EBS evidence using the AWS
 // SDK v2's standard credentials chain.
 type Collector struct {
@@ -100,6 +114,8 @@ type Collector struct {
 	rds        RDSAPI
 	ec2        EC2API
 	config     ConfigAPI
+	guardduty  GuardDutyAPI
+	ssm        SSMAPI
 	region     string
 }
 
@@ -116,6 +132,10 @@ func WithRDS(api RDSAPI) Option { return func(c *Collector) { c.rds = api } }
 func WithEC2(api EC2API) Option { return func(c *Collector) { c.ec2 = api } }
 
 func WithConfig(api ConfigAPI) Option { return func(c *Collector) { c.config = api } }
+
+func WithGuardDuty(api GuardDutyAPI) Option { return func(c *Collector) { c.guardduty = api } }
+
+func WithSSM(api SSMAPI) Option { return func(c *Collector) { c.ssm = api } }
 
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
@@ -134,6 +154,8 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		rds:        rds.NewFromConfig(cfg),
 		ec2:        ec2.NewFromConfig(cfg),
 		config:     configservice.NewFromConfig(cfg),
+		guardduty:  guardduty.NewFromConfig(cfg),
+		ssm:        ssm.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -177,6 +199,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectVPCFlowLogs(ref)
 	case "config_recorder_status":
 		return c.collectConfigRecorderStatus(ref)
+	case "guardduty_status":
+		return c.collectGuardDutyStatus(ref)
+	case "ssm_patch_compliance":
+		return c.collectSSMPatchCompliance(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

@@ -20,6 +20,8 @@ the AWS SDK v2's standard credentials chain.
 | `s3_bucket_policy` | per-bucket resource policy (decoded) + tags |
 | `vpc_flow_logs` | per-VPC active flow-log status |
 | `config_recorder_status` | AWS Config recorder coverage (recording + all-supported) |
+| `guardduty_status` | GuardDuty detector status per region |
+| `ssm_patch_compliance` | SSM per-instance patch compliance |
 
 ## Required IAM permissions
 

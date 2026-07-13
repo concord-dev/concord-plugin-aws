@@ -8,9 +8,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.57.0
 	github.com/aws/aws-sdk-go-v2/service/configservice v1.67.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.316.0
+	github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0
 	github.com/aws/aws-sdk-go-v2/service/iam v1.55.0
 	github.com/aws/aws-sdk-go-v2/service/rds v1.120.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.0
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.71.0
 	github.com/aws/smithy-go v1.27.3
 	github.com/concord-dev/concord-plugin-sdk v0.1.0
 	github.com/stretchr/testify v1.11.1
