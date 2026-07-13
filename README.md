@@ -27,6 +27,8 @@ the AWS SDK v2's standard credentials chain.
 | `s3_bucket_integrity` | per-bucket versioning + Object Lock |
 | `ec2_inventory` | EC2 instances + Config-recording flag |
 | `cloudtrail_event_selectors` | per-trail event selectors |
+| `iam_privileged_principals` | IAM admins with MFA + access-key facts |
+| `iam_identity_inventory` | IAM user inventory + root/account-key facts |
 
 ## Required IAM permissions
 

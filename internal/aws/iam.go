@@ -81,26 +81,38 @@ func (c *Collector) collectIAMCredentialReport(ref plugin.EvidenceRef) (any, err
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	if _, err := c.iam.GenerateCredentialReport(ctx, &iam.GenerateCredentialReportInput{}); err != nil {
-		return nil, wrapErr("generate credential report", err)
-	}
-	out, err := c.pollCredentialReport(ctx)
+	users, generated, err := c.credentialReportUsers(ctx)
 	if err != nil {
 		return nil, err
-	}
-	users, err := parseCredentialReport(string(out.Content), time.Now().UTC())
-	if err != nil {
-		return nil, fmt.Errorf("parsing credential report: %w", err)
-	}
-	generated := ""
-	if out.GeneratedTime != nil {
-		generated = out.GeneratedTime.UTC().Format(time.RFC3339)
 	}
 	return map[string]any{
 		"fetched_at":   time.Now().UTC().Format(time.RFC3339),
 		"generated_at": generated,
 		"users":        users,
 	}, nil
+}
+
+// credentialReportUsers generates, polls, and parses the IAM credential report,
+// returning one row per principal (including <root_account>) and the report's
+// generated-at timestamp. Shared by the iam_credential_report,
+// iam_identity_inventory, and iam_privileged_principals collectors.
+func (c *Collector) credentialReportUsers(ctx context.Context) ([]map[string]any, string, error) {
+	if _, err := c.iam.GenerateCredentialReport(ctx, &iam.GenerateCredentialReportInput{}); err != nil {
+		return nil, "", wrapErr("generate credential report", err)
+	}
+	out, err := c.pollCredentialReport(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+	users, err := parseCredentialReport(string(out.Content), time.Now().UTC())
+	if err != nil {
+		return nil, "", fmt.Errorf("parsing credential report: %w", err)
+	}
+	generated := ""
+	if out.GeneratedTime != nil {
+		generated = out.GeneratedTime.UTC().Format(time.RFC3339)
+	}
+	return users, generated, nil
 }
 
 func (c *Collector) pollCredentialReport(ctx context.Context) (*iam.GetCredentialReportOutput, error) {

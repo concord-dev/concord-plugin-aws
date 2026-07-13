@@ -36,6 +36,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"config_recorder_status", "guardduty_status", "ssm_patch_compliance",
 			"kms_keys", "network_acls", "s3_bucket_integrity",
 			"ec2_inventory", "cloudtrail_event_selectors",
+			"iam_identity_inventory", "iam_privileged_principals",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -233,6 +234,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectEC2Inventory(ref)
 	case "cloudtrail_event_selectors":
 		return c.collectCloudTrailEventSelectors(ref)
+	case "iam_identity_inventory":
+		return c.collectIAMIdentityInventory(ref)
+	case "iam_privileged_principals":
+		return c.collectIAMPrivilegedPrincipals(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

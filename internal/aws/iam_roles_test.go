@@ -27,10 +27,12 @@ type fakeIAM struct {
 	attachedGroup  map[string][]iamtypes.AttachedPolicy
 	policyVersions map[string]string // arn -> default version id
 	policyDocs     map[string]string // arn -> URL-encoded document
+	credReportCSV  string
+	summaryMap     map[string]int32
 }
 
-func (fakeIAM) GetAccountSummary(context.Context, *iam.GetAccountSummaryInput, ...func(*iam.Options)) (*iam.GetAccountSummaryOutput, error) {
-	return &iam.GetAccountSummaryOutput{}, nil
+func (f fakeIAM) GetAccountSummary(context.Context, *iam.GetAccountSummaryInput, ...func(*iam.Options)) (*iam.GetAccountSummaryOutput, error) {
+	return &iam.GetAccountSummaryOutput{SummaryMap: f.summaryMap}, nil
 }
 
 func (fakeIAM) GetAccountPasswordPolicy(context.Context, *iam.GetAccountPasswordPolicyInput, ...func(*iam.Options)) (*iam.GetAccountPasswordPolicyOutput, error) {
@@ -41,8 +43,8 @@ func (fakeIAM) GenerateCredentialReport(context.Context, *iam.GenerateCredential
 	return &iam.GenerateCredentialReportOutput{}, nil
 }
 
-func (fakeIAM) GetCredentialReport(context.Context, *iam.GetCredentialReportInput, ...func(*iam.Options)) (*iam.GetCredentialReportOutput, error) {
-	return &iam.GetCredentialReportOutput{}, nil
+func (f fakeIAM) GetCredentialReport(context.Context, *iam.GetCredentialReportInput, ...func(*iam.Options)) (*iam.GetCredentialReportOutput, error) {
+	return &iam.GetCredentialReportOutput{Content: []byte(f.credReportCSV)}, nil
 }
 
 func (f fakeIAM) ListRoles(context.Context, *iam.ListRolesInput, ...func(*iam.Options)) (*iam.ListRolesOutput, error) {
