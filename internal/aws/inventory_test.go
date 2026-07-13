@@ -40,6 +40,7 @@ func TestCollectEC2Inventory(t *testing.T) {
 type fakeCloudTrail struct {
 	trails    []cttypes.Trail
 	selectors []cttypes.EventSelector
+	logging   bool
 }
 
 func (f fakeCloudTrail) DescribeTrails(context.Context, *cloudtrail.DescribeTrailsInput, ...func(*cloudtrail.Options)) (*cloudtrail.DescribeTrailsOutput, error) {
@@ -47,7 +48,7 @@ func (f fakeCloudTrail) DescribeTrails(context.Context, *cloudtrail.DescribeTrai
 }
 
 func (f fakeCloudTrail) GetTrailStatus(context.Context, *cloudtrail.GetTrailStatusInput, ...func(*cloudtrail.Options)) (*cloudtrail.GetTrailStatusOutput, error) {
-	return &cloudtrail.GetTrailStatusOutput{}, nil
+	return &cloudtrail.GetTrailStatusOutput{IsLogging: awssdk.Bool(f.logging)}, nil
 }
 
 func (f fakeCloudTrail) GetEventSelectors(context.Context, *cloudtrail.GetEventSelectorsInput, ...func(*cloudtrail.Options)) (*cloudtrail.GetEventSelectorsOutput, error) {

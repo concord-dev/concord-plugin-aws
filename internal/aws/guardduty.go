@@ -24,6 +24,20 @@ func (c *Collector) collectGuardDutyStatus(_ plugin.EvidenceRef) (any, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	detectors, err := c.guardDutyDetectors(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"fetched_at":          time.Now().UTC().Format(time.RFC3339),
+		"active_regions":      []string{c.region},
+		"guardduty_detectors": detectors,
+	}, nil
+}
+
+// guardDutyDetectors lists GuardDuty detectors in the region with their status.
+// Shared by guardduty_status and anti_malware_status.
+func (c *Collector) guardDutyDetectors(ctx context.Context) ([]map[string]any, error) {
 	detectors := make([]map[string]any, 0)
 	pager := guardduty.NewListDetectorsPaginator(c.guardduty, &guardduty.ListDetectorsInput{})
 	for pager.HasMorePages() {
@@ -43,9 +57,5 @@ func (c *Collector) collectGuardDutyStatus(_ plugin.EvidenceRef) (any, error) {
 			})
 		}
 	}
-	return map[string]any{
-		"fetched_at":          time.Now().UTC().Format(time.RFC3339),
-		"active_regions":      []string{c.region},
-		"guardduty_detectors": detectors,
-	}, nil
+	return detectors, nil
 }

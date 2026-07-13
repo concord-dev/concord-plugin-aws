@@ -31,6 +31,8 @@ the AWS SDK v2's standard credentials chain.
 | `iam_identity_inventory` | IAM user inventory + root/account-key facts |
 | `config_conformance_status` | AWS Config conformance-pack compliance |
 | `s3_lifecycle` | per-bucket lifecycle rules + Object Lock |
+| `anti_malware_status` | GuardDuty + Inspector threat-detection posture |
+| `integrity_monitoring` | CloudTrail log-file validation + Config recording |
 
 ## Required IAM permissions
 

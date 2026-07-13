@@ -24,6 +24,8 @@ github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0 h1:pNOY79bDKVhDJbo+FZNeRT
 github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0/go.mod h1:5ALcyuLJ7PWhKGfymTQuzcnElk/7CDiTjIv/Hp6YyGc=
 github.com/aws/aws-sdk-go-v2/service/iam v1.55.0 h1:yHGUjdpLS+QrE/2UypKn2yNGuAJJQELYzjQ/5qL1Eu4=
 github.com/aws/aws-sdk-go-v2/service/iam v1.55.0/go.mod h1:5H/UUroHvcKm6l2qaqh3CMM6R9K91ls8Y8rVX6cG3ts=
+github.com/aws/aws-sdk-go-v2/service/inspector2 v1.52.0 h1:0pjqZJz0F2jwrrIuqQaQRwzA5cZGA/UNpnHjdrXBuGo=
+github.com/aws/aws-sdk-go-v2/service/inspector2 v1.52.0/go.mod h1:VEQnuB52NF3MOc0tn76II/rh9ShfJtxiZiFCobv3gOY=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 h1:mbRIur/BiHK6SKPjoBIXSE/hJ6g6JGRLuxQy1jGjlN4=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13/go.mod h1:ITg9em2KbJx1s0y4aqRX5OYWG6HBZ5TVR//OdpEZ2CQ=
 github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.23 h1:9Fjh6fi/U5JEStVZijmaMpUwE/gvBJj7x2B/PjbO9To=

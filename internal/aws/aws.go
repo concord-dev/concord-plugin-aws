@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/inspector2"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -38,6 +39,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"ec2_inventory", "cloudtrail_event_selectors",
 			"iam_identity_inventory", "iam_privileged_principals",
 			"config_conformance_status", "s3_lifecycle",
+			"anti_malware_status", "integrity_monitoring",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -113,6 +115,12 @@ type GuardDutyAPI interface {
 	GetDetector(ctx context.Context, in *guardduty.GetDetectorInput, opts ...func(*guardduty.Options)) (*guardduty.GetDetectorOutput, error)
 }
 
+// Inspector2API is the subset of the Inspector2 client the anti_malware_status
+// collector uses.
+type Inspector2API interface {
+	BatchGetAccountStatus(ctx context.Context, in *inspector2.BatchGetAccountStatusInput, opts ...func(*inspector2.Options)) (*inspector2.BatchGetAccountStatusOutput, error)
+}
+
 // SSMAPI is the subset of the SSM client the ssm_patch_compliance collector uses.
 type SSMAPI interface {
 	DescribeInstancePatchStates(ctx context.Context, in *ssm.DescribeInstancePatchStatesInput, opts ...func(*ssm.Options)) (*ssm.DescribeInstancePatchStatesOutput, error)
@@ -136,6 +144,7 @@ type Collector struct {
 	ec2        EC2API
 	config     ConfigAPI
 	guardduty  GuardDutyAPI
+	inspector  Inspector2API
 	ssm        SSMAPI
 	kms        KMSAPI
 	region     string
@@ -156,6 +165,8 @@ func WithEC2(api EC2API) Option { return func(c *Collector) { c.ec2 = api } }
 func WithConfig(api ConfigAPI) Option { return func(c *Collector) { c.config = api } }
 
 func WithGuardDuty(api GuardDutyAPI) Option { return func(c *Collector) { c.guardduty = api } }
+
+func WithInspector2(api Inspector2API) Option { return func(c *Collector) { c.inspector = api } }
 
 func WithSSM(api SSMAPI) Option { return func(c *Collector) { c.ssm = api } }
 
@@ -179,6 +190,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		ec2:        ec2.NewFromConfig(cfg),
 		config:     configservice.NewFromConfig(cfg),
 		guardduty:  guardduty.NewFromConfig(cfg),
+		inspector:  inspector2.NewFromConfig(cfg),
 		ssm:        ssm.NewFromConfig(cfg),
 		kms:        kms.NewFromConfig(cfg),
 		region:     region,
@@ -246,6 +258,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectConfigConformanceStatus(ref)
 	case "s3_lifecycle":
 		return c.collectS3Lifecycle(ref)
+	case "anti_malware_status":
+		return c.collectAntiMalwareStatus(ref)
+	case "integrity_monitoring":
+		return c.collectIntegrityMonitoring(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
