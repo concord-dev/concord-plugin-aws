@@ -5,10 +5,12 @@ go 1.25.11
 require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
+	github.com/aws/aws-sdk-go-v2/service/backup v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.57.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.79.0
 	github.com/aws/aws-sdk-go-v2/service/configservice v1.67.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.60.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.316.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.56.0
 	github.com/aws/aws-sdk-go-v2/service/guardduty v1.82.0
@@ -32,6 +34,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.23 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.12.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.31 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.4.0 // indirect

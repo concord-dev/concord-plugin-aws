@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/backup"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	elbv2 "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
@@ -44,7 +46,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"config_conformance_status", "s3_lifecycle",
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
-			"inspector_findings",
+			"inspector_findings", "backup_status",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -153,6 +155,19 @@ type SSMAPI interface {
 	DescribeInstancePatchStates(ctx context.Context, in *ssm.DescribeInstancePatchStatesInput, opts ...func(*ssm.Options)) (*ssm.DescribeInstancePatchStatesOutput, error)
 }
 
+// BackupAPI is the subset of the AWS Backup client the backup_status collector uses.
+type BackupAPI interface {
+	ListBackupVaults(ctx context.Context, in *backup.ListBackupVaultsInput, opts ...func(*backup.Options)) (*backup.ListBackupVaultsOutput, error)
+}
+
+// DynamoDBAPI is the subset of the DynamoDB client the backup_status collector uses.
+type DynamoDBAPI interface {
+	ListTables(ctx context.Context, in *dynamodb.ListTablesInput, opts ...func(*dynamodb.Options)) (*dynamodb.ListTablesOutput, error)
+	DescribeContinuousBackups(ctx context.Context, in *dynamodb.DescribeContinuousBackupsInput, opts ...func(*dynamodb.Options)) (*dynamodb.DescribeContinuousBackupsOutput, error)
+	DescribeTable(ctx context.Context, in *dynamodb.DescribeTableInput, opts ...func(*dynamodb.Options)) (*dynamodb.DescribeTableOutput, error)
+	ListTagsOfResource(ctx context.Context, in *dynamodb.ListTagsOfResourceInput, opts ...func(*dynamodb.Options)) (*dynamodb.ListTagsOfResourceOutput, error)
+}
+
 // KMSAPI is the subset of the KMS client the kms_keys collector uses.
 type KMSAPI interface {
 	ListKeys(ctx context.Context, in *kms.ListKeysInput, opts ...func(*kms.Options)) (*kms.ListKeysOutput, error)
@@ -177,6 +192,8 @@ type Collector struct {
 	cw         CloudWatchAPI
 	cwlogs     CloudWatchLogsAPI
 	elbv2      ELBv2API
+	backup     BackupAPI
+	dynamodb   DynamoDBAPI
 	region     string
 }
 
@@ -208,6 +225,10 @@ func WithCloudWatchLogs(api CloudWatchLogsAPI) Option { return func(c *Collector
 
 func WithELBv2(api ELBv2API) Option { return func(c *Collector) { c.elbv2 = api } }
 
+func WithBackup(api BackupAPI) Option { return func(c *Collector) { c.backup = api } }
+
+func WithDynamoDB(api DynamoDBAPI) Option { return func(c *Collector) { c.dynamodb = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -232,6 +253,8 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		cw:         cloudwatch.NewFromConfig(cfg),
 		cwlogs:     cloudwatchlogs.NewFromConfig(cfg),
 		elbv2:      elbv2.NewFromConfig(cfg),
+		backup:     backup.NewFromConfig(cfg),
+		dynamodb:   dynamodb.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -309,6 +332,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectTLSEndpoints(ref)
 	case "inspector_findings":
 		return c.collectInspectorFindings(ref)
+	case "backup_status":
+		return c.collectBackupStatus(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
