@@ -41,6 +41,14 @@ func (fakeS3) GetBucketPolicy(_ context.Context, _ *s3.GetBucketPolicyInput, _ .
 	return &s3.GetBucketPolicyOutput{}, nil
 }
 
+func (fakeS3) GetBucketVersioning(_ context.Context, _ *s3.GetBucketVersioningInput, _ ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error) {
+	return &s3.GetBucketVersioningOutput{}, nil
+}
+
+func (fakeS3) GetObjectLockConfiguration(_ context.Context, _ *s3.GetObjectLockConfigurationInput, _ ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error) {
+	return &s3.GetObjectLockConfigurationOutput{}, nil
+}
+
 func TestCollectAssets_S3Buckets(t *testing.T) {
 	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	c := &aws.Collector{}

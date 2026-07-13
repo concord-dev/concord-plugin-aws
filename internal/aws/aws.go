@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -33,6 +34,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"cloudtrail_trails", "storage_encryption", "security_groups", "iam_roles",
 			"iam_policies", "s3_bucket_policy", "vpc_flow_logs",
 			"config_recorder_status", "guardduty_status", "ssm_patch_compliance",
+			"kms_keys", "network_acls", "s3_bucket_integrity",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -49,6 +51,8 @@ type S3API interface {
 	GetPublicAccessBlock(ctx context.Context, in *s3.GetPublicAccessBlockInput, opts ...func(*s3.Options)) (*s3.GetPublicAccessBlockOutput, error)
 	GetBucketTagging(ctx context.Context, in *s3.GetBucketTaggingInput, opts ...func(*s3.Options)) (*s3.GetBucketTaggingOutput, error)
 	GetBucketPolicy(ctx context.Context, in *s3.GetBucketPolicyInput, opts ...func(*s3.Options)) (*s3.GetBucketPolicyOutput, error)
+	GetBucketVersioning(ctx context.Context, in *s3.GetBucketVersioningInput, opts ...func(*s3.Options)) (*s3.GetBucketVersioningOutput, error)
+	GetObjectLockConfiguration(ctx context.Context, in *s3.GetObjectLockConfigurationInput, opts ...func(*s3.Options)) (*s3.GetObjectLockConfigurationOutput, error)
 }
 
 // RDSAPI is the subset of the RDS client the storage_encryption collector uses.
@@ -63,6 +67,7 @@ type EC2API interface {
 	DescribeSecurityGroups(ctx context.Context, in *ec2.DescribeSecurityGroupsInput, opts ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
 	DescribeVpcs(ctx context.Context, in *ec2.DescribeVpcsInput, opts ...func(*ec2.Options)) (*ec2.DescribeVpcsOutput, error)
 	DescribeFlowLogs(ctx context.Context, in *ec2.DescribeFlowLogsInput, opts ...func(*ec2.Options)) (*ec2.DescribeFlowLogsOutput, error)
+	DescribeNetworkAcls(ctx context.Context, in *ec2.DescribeNetworkAclsInput, opts ...func(*ec2.Options)) (*ec2.DescribeNetworkAclsOutput, error)
 }
 
 type IAMAPI interface {
@@ -105,6 +110,14 @@ type SSMAPI interface {
 	DescribeInstancePatchStates(ctx context.Context, in *ssm.DescribeInstancePatchStatesInput, opts ...func(*ssm.Options)) (*ssm.DescribeInstancePatchStatesOutput, error)
 }
 
+// KMSAPI is the subset of the KMS client the kms_keys collector uses.
+type KMSAPI interface {
+	ListKeys(ctx context.Context, in *kms.ListKeysInput, opts ...func(*kms.Options)) (*kms.ListKeysOutput, error)
+	DescribeKey(ctx context.Context, in *kms.DescribeKeyInput, opts ...func(*kms.Options)) (*kms.DescribeKeyOutput, error)
+	GetKeyRotationStatus(ctx context.Context, in *kms.GetKeyRotationStatusInput, opts ...func(*kms.Options)) (*kms.GetKeyRotationStatusOutput, error)
+	ListResourceTags(ctx context.Context, in *kms.ListResourceTagsInput, opts ...func(*kms.Options)) (*kms.ListResourceTagsOutput, error)
+}
+
 // Collector reads IAM, S3, CloudTrail, RDS, and EBS evidence using the AWS
 // SDK v2's standard credentials chain.
 type Collector struct {
@@ -116,6 +129,7 @@ type Collector struct {
 	config     ConfigAPI
 	guardduty  GuardDutyAPI
 	ssm        SSMAPI
+	kms        KMSAPI
 	region     string
 }
 
@@ -137,6 +151,8 @@ func WithGuardDuty(api GuardDutyAPI) Option { return func(c *Collector) { c.guar
 
 func WithSSM(api SSMAPI) Option { return func(c *Collector) { c.ssm = api } }
 
+func WithKMS(api KMSAPI) Option { return func(c *Collector) { c.kms = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -156,6 +172,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		config:     configservice.NewFromConfig(cfg),
 		guardduty:  guardduty.NewFromConfig(cfg),
 		ssm:        ssm.NewFromConfig(cfg),
+		kms:        kms.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -203,6 +220,12 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectGuardDutyStatus(ref)
 	case "ssm_patch_compliance":
 		return c.collectSSMPatchCompliance(ref)
+	case "kms_keys":
+		return c.collectKMSKeys(ref)
+	case "network_acls":
+		return c.collectNetworkACLs(ref)
+	case "s3_bucket_integrity":
+		return c.collectS3BucketIntegrity(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

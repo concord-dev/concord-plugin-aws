@@ -22,6 +22,9 @@ the AWS SDK v2's standard credentials chain.
 | `config_recorder_status` | AWS Config recorder coverage (recording + all-supported) |
 | `guardduty_status` | GuardDuty detector status per region |
 | `ssm_patch_compliance` | SSM per-instance patch compliance |
+| `kms_keys` | customer KMS keys: rotation state + tags |
+| `network_acls` | network ACL rule entries |
+| `s3_bucket_integrity` | per-bucket versioning + Object Lock |
 
 ## Required IAM permissions
 

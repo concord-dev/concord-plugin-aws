@@ -43,6 +43,7 @@ type fakeEC2 struct {
 	sgs      []ec2types.SecurityGroup
 	vpcs     []ec2types.Vpc
 	flowLogs []ec2types.FlowLog
+	nacls    []ec2types.NetworkAcl
 }
 
 func (f fakeEC2) DescribeVolumes(_ context.Context, _ *ec2.DescribeVolumesInput, _ ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error) {
@@ -59,6 +60,10 @@ func (f fakeEC2) DescribeVpcs(_ context.Context, _ *ec2.DescribeVpcsInput, _ ...
 
 func (f fakeEC2) DescribeFlowLogs(_ context.Context, _ *ec2.DescribeFlowLogsInput, _ ...func(*ec2.Options)) (*ec2.DescribeFlowLogsOutput, error) {
 	return &ec2.DescribeFlowLogsOutput{FlowLogs: f.flowLogs}, nil
+}
+
+func (f fakeEC2) DescribeNetworkAcls(_ context.Context, _ *ec2.DescribeNetworkAclsInput, _ ...func(*ec2.Options)) (*ec2.DescribeNetworkAclsOutput, error) {
+	return &ec2.DescribeNetworkAclsOutput{NetworkAcls: f.nacls}, nil
 }
 
 func TestCollectStorageEncryption(t *testing.T) {
