@@ -44,6 +44,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"config_conformance_status", "s3_lifecycle",
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
+			"inspector_findings",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -144,6 +145,7 @@ type ELBv2API interface {
 // collector uses.
 type Inspector2API interface {
 	BatchGetAccountStatus(ctx context.Context, in *inspector2.BatchGetAccountStatusInput, opts ...func(*inspector2.Options)) (*inspector2.BatchGetAccountStatusOutput, error)
+	ListFindings(ctx context.Context, in *inspector2.ListFindingsInput, opts ...func(*inspector2.Options)) (*inspector2.ListFindingsOutput, error)
 }
 
 // SSMAPI is the subset of the SSM client the ssm_patch_compliance collector uses.
@@ -305,6 +307,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectCloudWatchLogGroups(ref)
 	case "aws_tls_endpoints":
 		return c.collectTLSEndpoints(ref)
+	case "inspector_findings":
+		return c.collectInspectorFindings(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

@@ -36,6 +36,7 @@ the AWS SDK v2's standard credentials chain.
 | `cloudwatch_alarms` | metric filters + the alarms watching them |
 | `cloudwatch_log_groups` | log-group retention, KMS, classification tags |
 | `aws_tls_endpoints` | S3 bucket policies + ELB listeners (TLS enforcement) |
+| `inspector_findings` | Inspector enablement + critical/high finding counts |
 
 ## Required IAM permissions
 

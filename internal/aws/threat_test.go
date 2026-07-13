@@ -18,12 +18,25 @@ import (
 	"github.com/concord-dev/concord-plugin-aws/internal/aws"
 )
 
-type fakeInspector struct{ enabled inspectortypes.Status }
+type fakeInspector struct {
+	enabled       inspectortypes.Status
+	findingsBySev map[string]int // severity value -> count
+}
 
 func (f fakeInspector) BatchGetAccountStatus(context.Context, *inspector2.BatchGetAccountStatusInput, ...func(*inspector2.Options)) (*inspector2.BatchGetAccountStatusOutput, error) {
 	return &inspector2.BatchGetAccountStatusOutput{Accounts: []inspectortypes.AccountState{
 		{State: &inspectortypes.State{Status: f.enabled}},
 	}}, nil
+}
+
+func (f fakeInspector) ListFindings(_ context.Context, in *inspector2.ListFindingsInput, _ ...func(*inspector2.Options)) (*inspector2.ListFindingsOutput, error) {
+	sev := ""
+	if in.FilterCriteria != nil && len(in.FilterCriteria.Severity) > 0 {
+		sev = awssdk.ToString(in.FilterCriteria.Severity[0].Value)
+	}
+	n := f.findingsBySev[sev]
+	findings := make([]inspectortypes.Finding, n)
+	return &inspector2.ListFindingsOutput{Findings: findings}, nil
 }
 
 func TestCollectAntiMalwareStatus(t *testing.T) {
@@ -38,6 +51,24 @@ func TestCollectAntiMalwareStatus(t *testing.T) {
 	dets := m["guardduty_detectors"].([]map[string]any)
 	require.Len(t, dets, 1)
 	assert.Equal(t, "ENABLED", dets[0]["status"])
+}
+
+func TestCollectInspectorFindings(t *testing.T) {
+	c := &aws.Collector{}
+	aws.WithInspector2(fakeInspector{
+		enabled:       inspectortypes.StatusEnabled,
+		findingsBySev: map[string]int{"CRITICAL": 2, "HIGH": 5},
+	})(c)
+
+	out, err := c.Collect(context.Background(), plugin.EvidenceRef{Type: "inspector_findings"})
+	require.NoError(t, err)
+	m := out.(map[string]any)
+	scanners := m["scanners"].([]map[string]any)
+	require.Len(t, scanners, 1)
+	assert.Equal(t, true, scanners[0]["inspector_enabled"])
+	findings := m["findings"].(map[string]any)
+	assert.Equal(t, 2, findings["critical_unresolved"])
+	assert.Equal(t, 5, findings["high_unresolved"])
 }
 
 func TestCollectIntegrityMonitoring(t *testing.T) {
