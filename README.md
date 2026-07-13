@@ -33,6 +33,8 @@ the AWS SDK v2's standard credentials chain.
 | `s3_lifecycle` | per-bucket lifecycle rules + Object Lock |
 | `anti_malware_status` | GuardDuty + Inspector threat-detection posture |
 | `integrity_monitoring` | CloudTrail log-file validation + Config recording |
+| `cloudwatch_alarms` | metric filters + the alarms watching them |
+| `cloudwatch_log_groups` | log-group retention, KMS, classification tags |
 
 ## Required IAM permissions
 

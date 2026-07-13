@@ -11,6 +11,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
@@ -40,6 +42,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"iam_identity_inventory", "iam_privileged_principals",
 			"config_conformance_status", "s3_lifecycle",
 			"anti_malware_status", "integrity_monitoring",
+			"cloudwatch_alarms", "cloudwatch_log_groups",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -115,6 +118,20 @@ type GuardDutyAPI interface {
 	GetDetector(ctx context.Context, in *guardduty.GetDetectorInput, opts ...func(*guardduty.Options)) (*guardduty.GetDetectorOutput, error)
 }
 
+// CloudWatchAPI is the subset of the CloudWatch client the cloudwatch_alarms
+// collector uses.
+type CloudWatchAPI interface {
+	DescribeAlarms(ctx context.Context, in *cloudwatch.DescribeAlarmsInput, opts ...func(*cloudwatch.Options)) (*cloudwatch.DescribeAlarmsOutput, error)
+}
+
+// CloudWatchLogsAPI is the subset of the CloudWatch Logs client the
+// cloudwatch_alarms and cloudwatch_log_groups collectors use.
+type CloudWatchLogsAPI interface {
+	DescribeMetricFilters(ctx context.Context, in *cloudwatchlogs.DescribeMetricFiltersInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeMetricFiltersOutput, error)
+	DescribeLogGroups(ctx context.Context, in *cloudwatchlogs.DescribeLogGroupsInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.DescribeLogGroupsOutput, error)
+	ListTagsForResource(ctx context.Context, in *cloudwatchlogs.ListTagsForResourceInput, opts ...func(*cloudwatchlogs.Options)) (*cloudwatchlogs.ListTagsForResourceOutput, error)
+}
+
 // Inspector2API is the subset of the Inspector2 client the anti_malware_status
 // collector uses.
 type Inspector2API interface {
@@ -147,6 +164,8 @@ type Collector struct {
 	inspector  Inspector2API
 	ssm        SSMAPI
 	kms        KMSAPI
+	cw         CloudWatchAPI
+	cwlogs     CloudWatchLogsAPI
 	region     string
 }
 
@@ -172,6 +191,10 @@ func WithSSM(api SSMAPI) Option { return func(c *Collector) { c.ssm = api } }
 
 func WithKMS(api KMSAPI) Option { return func(c *Collector) { c.kms = api } }
 
+func WithCloudWatch(api CloudWatchAPI) Option { return func(c *Collector) { c.cw = api } }
+
+func WithCloudWatchLogs(api CloudWatchLogsAPI) Option { return func(c *Collector) { c.cwlogs = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -193,6 +216,8 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		inspector:  inspector2.NewFromConfig(cfg),
 		ssm:        ssm.NewFromConfig(cfg),
 		kms:        kms.NewFromConfig(cfg),
+		cw:         cloudwatch.NewFromConfig(cfg),
+		cwlogs:     cloudwatchlogs.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -262,6 +287,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectAntiMalwareStatus(ref)
 	case "integrity_monitoring":
 		return c.collectIntegrityMonitoring(ref)
+	case "cloudwatch_alarms":
+		return c.collectCloudWatchAlarms(ref)
+	case "cloudwatch_log_groups":
+		return c.collectCloudWatchLogGroups(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
