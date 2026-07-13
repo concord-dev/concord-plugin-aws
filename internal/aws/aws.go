@@ -35,6 +35,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"iam_policies", "s3_bucket_policy", "vpc_flow_logs",
 			"config_recorder_status", "guardduty_status", "ssm_patch_compliance",
 			"kms_keys", "network_acls", "s3_bucket_integrity",
+			"ec2_inventory", "cloudtrail_event_selectors",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -68,6 +69,7 @@ type EC2API interface {
 	DescribeVpcs(ctx context.Context, in *ec2.DescribeVpcsInput, opts ...func(*ec2.Options)) (*ec2.DescribeVpcsOutput, error)
 	DescribeFlowLogs(ctx context.Context, in *ec2.DescribeFlowLogsInput, opts ...func(*ec2.Options)) (*ec2.DescribeFlowLogsOutput, error)
 	DescribeNetworkAcls(ctx context.Context, in *ec2.DescribeNetworkAclsInput, opts ...func(*ec2.Options)) (*ec2.DescribeNetworkAclsOutput, error)
+	DescribeInstances(ctx context.Context, in *ec2.DescribeInstancesInput, opts ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error)
 }
 
 type IAMAPI interface {
@@ -89,6 +91,7 @@ type IAMAPI interface {
 type CloudTrailAPI interface {
 	DescribeTrails(ctx context.Context, in *cloudtrail.DescribeTrailsInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.DescribeTrailsOutput, error)
 	GetTrailStatus(ctx context.Context, in *cloudtrail.GetTrailStatusInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.GetTrailStatusOutput, error)
+	GetEventSelectors(ctx context.Context, in *cloudtrail.GetEventSelectorsInput, opts ...func(*cloudtrail.Options)) (*cloudtrail.GetEventSelectorsOutput, error)
 }
 
 // ConfigAPI is the subset of the AWS Config client the config_recorder_status
@@ -226,6 +229,10 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectNetworkACLs(ref)
 	case "s3_bucket_integrity":
 		return c.collectS3BucketIntegrity(ref)
+	case "ec2_inventory":
+		return c.collectEC2Inventory(ref)
+	case "cloudtrail_event_selectors":
+		return c.collectCloudTrailEventSelectors(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

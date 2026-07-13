@@ -25,6 +25,8 @@ the AWS SDK v2's standard credentials chain.
 | `kms_keys` | customer KMS keys: rotation state + tags |
 | `network_acls` | network ACL rule entries |
 | `s3_bucket_integrity` | per-bucket versioning + Object Lock |
+| `ec2_inventory` | EC2 instances + Config-recording flag |
+| `cloudtrail_event_selectors` | per-trail event selectors |
 
 ## Required IAM permissions
 

@@ -39,11 +39,12 @@ func (f fakeRDS) DescribeDBInstances(_ context.Context, _ *rds.DescribeDBInstanc
 }
 
 type fakeEC2 struct {
-	volumes  []ec2types.Volume
-	sgs      []ec2types.SecurityGroup
-	vpcs     []ec2types.Vpc
-	flowLogs []ec2types.FlowLog
-	nacls    []ec2types.NetworkAcl
+	volumes      []ec2types.Volume
+	sgs          []ec2types.SecurityGroup
+	vpcs         []ec2types.Vpc
+	flowLogs     []ec2types.FlowLog
+	nacls        []ec2types.NetworkAcl
+	reservations []ec2types.Reservation
 }
 
 func (f fakeEC2) DescribeVolumes(_ context.Context, _ *ec2.DescribeVolumesInput, _ ...func(*ec2.Options)) (*ec2.DescribeVolumesOutput, error) {
@@ -64,6 +65,10 @@ func (f fakeEC2) DescribeFlowLogs(_ context.Context, _ *ec2.DescribeFlowLogsInpu
 
 func (f fakeEC2) DescribeNetworkAcls(_ context.Context, _ *ec2.DescribeNetworkAclsInput, _ ...func(*ec2.Options)) (*ec2.DescribeNetworkAclsOutput, error) {
 	return &ec2.DescribeNetworkAclsOutput{NetworkAcls: f.nacls}, nil
+}
+
+func (f fakeEC2) DescribeInstances(_ context.Context, _ *ec2.DescribeInstancesInput, _ ...func(*ec2.Options)) (*ec2.DescribeInstancesOutput, error) {
+	return &ec2.DescribeInstancesOutput{Reservations: f.reservations}, nil
 }
 
 func TestCollectStorageEncryption(t *testing.T) {
