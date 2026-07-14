@@ -51,7 +51,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
 			"inspector_findings", "backup_status", "waf_coverage",
-			"metric_filter_alarms", "api_gateway",
+			"metric_filter_alarms", "api_gateway", "audit_trail_status",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -387,6 +387,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectMetricFilterAlarms(ref)
 	case "api_gateway":
 		return c.collectAPIGateway(ref)
+	case "audit_trail_status":
+		return c.collectAuditTrailStatus(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
