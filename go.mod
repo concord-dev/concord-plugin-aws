@@ -5,6 +5,7 @@ go 1.25.11
 require (
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/backup v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.66.1
 	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.57.0

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/backup"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
@@ -50,7 +51,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
 			"inspector_findings", "backup_status", "waf_coverage",
-			"metric_filter_alarms",
+			"metric_filter_alarms", "api_gateway",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -147,6 +148,15 @@ type ELBv2API interface {
 	DescribeTags(ctx context.Context, in *elbv2.DescribeTagsInput, opts ...func(*elbv2.Options)) (*elbv2.DescribeTagsOutput, error)
 }
 
+// APIGatewayAPI is the subset of the API Gateway client the api_gateway
+// collector uses.
+type APIGatewayAPI interface {
+	GetRestApis(ctx context.Context, in *apigateway.GetRestApisInput, opts ...func(*apigateway.Options)) (*apigateway.GetRestApisOutput, error)
+	GetResources(ctx context.Context, in *apigateway.GetResourcesInput, opts ...func(*apigateway.Options)) (*apigateway.GetResourcesOutput, error)
+	GetStages(ctx context.Context, in *apigateway.GetStagesInput, opts ...func(*apigateway.Options)) (*apigateway.GetStagesOutput, error)
+	GetUsagePlans(ctx context.Context, in *apigateway.GetUsagePlansInput, opts ...func(*apigateway.Options)) (*apigateway.GetUsagePlansOutput, error)
+}
+
 // CloudFrontAPI is the subset of the CloudFront client the waf_coverage
 // collector uses.
 type CloudFrontAPI interface {
@@ -218,6 +228,7 @@ type Collector struct {
 	cloudfront CloudFrontAPI
 	wafv2      WAFv2API
 	sns        SNSAPI
+	apigateway APIGatewayAPI
 	region     string
 }
 
@@ -259,6 +270,8 @@ func WithWAFv2(api WAFv2API) Option { return func(c *Collector) { c.wafv2 = api 
 
 func WithSNS(api SNSAPI) Option { return func(c *Collector) { c.sns = api } }
 
+func WithAPIGateway(api APIGatewayAPI) Option { return func(c *Collector) { c.apigateway = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -288,6 +301,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		cloudfront: cloudfront.NewFromConfig(cfg),
 		wafv2:      wafv2.NewFromConfig(cfg),
 		sns:        sns.NewFromConfig(cfg),
+		apigateway: apigateway.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -371,6 +385,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectWAFCoverage(ref)
 	case "metric_filter_alarms":
 		return c.collectMetricFilterAlarms(ref)
+	case "api_gateway":
+		return c.collectAPIGateway(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:

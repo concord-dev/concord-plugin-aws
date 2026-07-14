@@ -27,15 +27,19 @@ func (f fakeCloudFront) ListDistributions(context.Context, *cloudfront.ListDistr
 	return &cloudfront.ListDistributionsOutput{DistributionList: &cftypes.DistributionList{Items: f.dists}}, nil
 }
 
-// fakeWAFv2 reports an association for any resource ARN in associated.
+// fakeWAFv2 reports an association for any resource ARN in associated, and the
+// number of rules on that WebACL from rules (default 0).
 type fakeWAFv2 struct {
 	associated map[string]string // resource ARN -> WebACL ARN
+	rules      map[string]int    // resource ARN -> rule count
 }
 
 func (f fakeWAFv2) GetWebACLForResource(_ context.Context, in *wafv2.GetWebACLForResourceInput, _ ...func(*wafv2.Options)) (*wafv2.GetWebACLForResourceOutput, error) {
 	arn := awssdk.ToString(in.ResourceArn)
 	if acl, ok := f.associated[arn]; ok {
-		return &wafv2.GetWebACLForResourceOutput{WebACL: &waftypes.WebACL{ARN: awssdk.String(acl)}}, nil
+		webACL := &waftypes.WebACL{ARN: awssdk.String(acl)}
+		webACL.Rules = make([]waftypes.Rule, f.rules[arn])
+		return &wafv2.GetWebACLForResourceOutput{WebACL: webACL}, nil
 	}
 	return &wafv2.GetWebACLForResourceOutput{}, nil
 }
