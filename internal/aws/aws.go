@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/backup"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
@@ -25,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	"github.com/aws/smithy-go"
 
 	plugin "github.com/concord-dev/concord-plugin-sdk/plugin"
@@ -46,7 +48,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"config_conformance_status", "s3_lifecycle",
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
-			"inspector_findings", "backup_status",
+			"inspector_findings", "backup_status", "waf_coverage",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -143,6 +145,17 @@ type ELBv2API interface {
 	DescribeTags(ctx context.Context, in *elbv2.DescribeTagsInput, opts ...func(*elbv2.Options)) (*elbv2.DescribeTagsOutput, error)
 }
 
+// CloudFrontAPI is the subset of the CloudFront client the waf_coverage
+// collector uses.
+type CloudFrontAPI interface {
+	ListDistributions(ctx context.Context, in *cloudfront.ListDistributionsInput, opts ...func(*cloudfront.Options)) (*cloudfront.ListDistributionsOutput, error)
+}
+
+// WAFv2API is the subset of the WAFv2 client the waf_coverage collector uses.
+type WAFv2API interface {
+	GetWebACLForResource(ctx context.Context, in *wafv2.GetWebACLForResourceInput, opts ...func(*wafv2.Options)) (*wafv2.GetWebACLForResourceOutput, error)
+}
+
 // Inspector2API is the subset of the Inspector2 client the anti_malware_status
 // collector uses.
 type Inspector2API interface {
@@ -194,6 +207,8 @@ type Collector struct {
 	elbv2      ELBv2API
 	backup     BackupAPI
 	dynamodb   DynamoDBAPI
+	cloudfront CloudFrontAPI
+	wafv2      WAFv2API
 	region     string
 }
 
@@ -229,6 +244,10 @@ func WithBackup(api BackupAPI) Option { return func(c *Collector) { c.backup = a
 
 func WithDynamoDB(api DynamoDBAPI) Option { return func(c *Collector) { c.dynamodb = api } }
 
+func WithCloudFront(api CloudFrontAPI) Option { return func(c *Collector) { c.cloudfront = api } }
+
+func WithWAFv2(api WAFv2API) Option { return func(c *Collector) { c.wafv2 = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -255,6 +274,8 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		elbv2:      elbv2.NewFromConfig(cfg),
 		backup:     backup.NewFromConfig(cfg),
 		dynamodb:   dynamodb.NewFromConfig(cfg),
+		cloudfront: cloudfront.NewFromConfig(cfg),
+		wafv2:      wafv2.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -334,6 +355,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectInspectorFindings(ref)
 	case "backup_status":
 		return c.collectBackupStatus(ref)
+	case "waf_coverage":
+		return c.collectWAFCoverage(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
