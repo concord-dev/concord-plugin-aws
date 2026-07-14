@@ -18,8 +18,10 @@ import (
 )
 
 type fakeGuardDuty struct {
-	ids    []string
-	status gdtypes.DetectorStatus
+	ids        []string
+	status     gdtypes.DetectorStatus
+	findingIDs []string
+	findings   []gdtypes.Finding
 }
 
 func (f fakeGuardDuty) ListDetectors(context.Context, *guardduty.ListDetectorsInput, ...func(*guardduty.Options)) (*guardduty.ListDetectorsOutput, error) {
@@ -28,6 +30,14 @@ func (f fakeGuardDuty) ListDetectors(context.Context, *guardduty.ListDetectorsIn
 
 func (f fakeGuardDuty) GetDetector(context.Context, *guardduty.GetDetectorInput, ...func(*guardduty.Options)) (*guardduty.GetDetectorOutput, error) {
 	return &guardduty.GetDetectorOutput{Status: f.status}, nil
+}
+
+func (f fakeGuardDuty) ListFindings(context.Context, *guardduty.ListFindingsInput, ...func(*guardduty.Options)) (*guardduty.ListFindingsOutput, error) {
+	return &guardduty.ListFindingsOutput{FindingIds: f.findingIDs}, nil
+}
+
+func (f fakeGuardDuty) GetFindings(context.Context, *guardduty.GetFindingsInput, ...func(*guardduty.Options)) (*guardduty.GetFindingsOutput, error) {
+	return &guardduty.GetFindingsOutput{Findings: f.findings}, nil
 }
 
 func TestCollectGuardDutyStatus(t *testing.T) {

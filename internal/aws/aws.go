@@ -52,6 +52,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
 			"inspector_findings", "backup_status", "waf_coverage",
 			"metric_filter_alarms", "api_gateway", "audit_trail_status",
+			"guardduty_detectors",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -125,6 +126,8 @@ type ConfigAPI interface {
 type GuardDutyAPI interface {
 	ListDetectors(ctx context.Context, in *guardduty.ListDetectorsInput, opts ...func(*guardduty.Options)) (*guardduty.ListDetectorsOutput, error)
 	GetDetector(ctx context.Context, in *guardduty.GetDetectorInput, opts ...func(*guardduty.Options)) (*guardduty.GetDetectorOutput, error)
+	ListFindings(ctx context.Context, in *guardduty.ListFindingsInput, opts ...func(*guardduty.Options)) (*guardduty.ListFindingsOutput, error)
+	GetFindings(ctx context.Context, in *guardduty.GetFindingsInput, opts ...func(*guardduty.Options)) (*guardduty.GetFindingsOutput, error)
 }
 
 // CloudWatchAPI is the subset of the CloudWatch client the cloudwatch_alarms
@@ -389,6 +392,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectAPIGateway(ref)
 	case "audit_trail_status":
 		return c.collectAuditTrailStatus(ref)
+	case "guardduty_detectors":
+		return c.collectGuardDutyDetectors(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
