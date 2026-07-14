@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	"github.com/aws/smithy-go"
@@ -49,6 +50,7 @@ func (c *Collector) Capabilities() plugin.Capabilities {
 			"anti_malware_status", "integrity_monitoring",
 			"cloudwatch_alarms", "cloudwatch_log_groups", "aws_tls_endpoints",
 			"inspector_findings", "backup_status", "waf_coverage",
+			"metric_filter_alarms",
 		},
 		OptionalEnv: []string{"AWS_REGION", "AWS_PROFILE", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		Permissions: plugin.Permissions{
@@ -156,6 +158,12 @@ type WAFv2API interface {
 	GetWebACLForResource(ctx context.Context, in *wafv2.GetWebACLForResourceInput, opts ...func(*wafv2.Options)) (*wafv2.GetWebACLForResourceOutput, error)
 }
 
+// SNSAPI is the subset of the SNS client the metric_filter_alarms collector
+// uses to confirm an alarm's topics actually have subscribers.
+type SNSAPI interface {
+	ListSubscriptionsByTopic(ctx context.Context, in *sns.ListSubscriptionsByTopicInput, opts ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error)
+}
+
 // Inspector2API is the subset of the Inspector2 client the anti_malware_status
 // collector uses.
 type Inspector2API interface {
@@ -209,6 +217,7 @@ type Collector struct {
 	dynamodb   DynamoDBAPI
 	cloudfront CloudFrontAPI
 	wafv2      WAFv2API
+	sns        SNSAPI
 	region     string
 }
 
@@ -248,6 +257,8 @@ func WithCloudFront(api CloudFrontAPI) Option { return func(c *Collector) { c.cl
 
 func WithWAFv2(api WAFv2API) Option { return func(c *Collector) { c.wafv2 = api } }
 
+func WithSNS(api SNSAPI) Option { return func(c *Collector) { c.sns = api } }
+
 // New returns an AWS collector wired to the real AWS SDK clients for the given
 // region (defaulting to us-east-1 when empty).
 func New(ctx context.Context, region string) (*Collector, error) {
@@ -276,6 +287,7 @@ func New(ctx context.Context, region string) (*Collector, error) {
 		dynamodb:   dynamodb.NewFromConfig(cfg),
 		cloudfront: cloudfront.NewFromConfig(cfg),
 		wafv2:      wafv2.NewFromConfig(cfg),
+		sns:        sns.NewFromConfig(cfg),
 		region:     region,
 	}, nil
 }
@@ -357,6 +369,8 @@ func (c *Collector) Collect(ctx context.Context, ref plugin.EvidenceRef) (any, e
 		return c.collectBackupStatus(ref)
 	case "waf_coverage":
 		return c.collectWAFCoverage(ref)
+	case "metric_filter_alarms":
+		return c.collectMetricFilterAlarms(ref)
 	case "":
 		return nil, fmt.Errorf("aws collector requires evidence type")
 	default:
